@@ -25,6 +25,9 @@ LEAGUE = os.path.expanduser('~/.Steam_watcher/league.json')
 IMAGES = os.path.expanduser('~/.Steam_watcher/images/')
 DOTA2_MATCHES = os.path.expanduser('~/.Steam_watcher/DOTA2_matches/')
 
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36'
+HEADER = {'User-Agent': USER_AGENT}
+
 PLAYER_SUMMARY = 'http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={}&steamids={}'
 LAST_MATCH = 'https://api.steampowered.com/IDOTA2Match_570/GetMatchHistory/v001/?key={}&account_id={}&matches_requested=1'
 MATCH_DETAILS = 'https://api.steampowered.com/IDOTA2Match_570/GetMatchDetails/V001/?key={}&match_id={}'
@@ -61,6 +64,7 @@ sv = Service(
     help_=sv_help  # 帮助说明
 )
 
+
 class Dota2:
     @staticmethod
     def get_last_match(id64):
@@ -94,7 +98,7 @@ class Dota2:
     def get_match(self, match_id):
         MATCH = os.path.join(DOTA2_MATCHES, f'{match_id}.json')
         if os.path.exists(MATCH):
-            sv.logger.info('比赛编号{match_id} 读取本地保存的分析结果')
+            sv.logger.info(f'比赛编号{match_id} 读取本地保存的分析结果')
             return loadjson(MATCH)
         steamdata = loadjson(STEAM)
         try:
@@ -105,9 +109,9 @@ class Dota2:
                 raise
             if match_id in steamdata['DOTA2_matches_pool']:
                 if steamdata['DOTA2_matches_pool'][match_id]['request_attempts'] >= MAX_ATTEMPTS:
-                    sv.logger.info('比赛编号{match_id} 重试次数过多，跳过分析')
+                    sv.logger.info(f'比赛编号{match_id} 重试次数过多，跳过分析')
                     if not match.get('players'):
-                        sv.logger.info('比赛编号{match_id} 从OPENDOTA获取不到分析结果，使用Value的API')
+                        sv.logger.info(f'比赛编号{match_id} 从OPENDOTA获取不到分析结果，使用Value的API')
                         try:
                             match = requests.get(MATCH_DETAILS.format(APIKEY, match_id), timeout=10).json()['result']
                         except requests.exceptions.RequestException as e:
@@ -118,7 +122,7 @@ class Dota2:
                     return match
             if match['game_mode'] in (15, 19):
                 # 活动模式
-                sv.logger.info('比赛编号{match_id} 活动模式，跳过分析')
+                sv.logger.info(f'比赛编号{match_id} 活动模式，跳过分析')
                 match['incomplete'] = True
                 # if match_id in steamdata['DOTA2_matches_pool']:
                 #     for pp in steamdata['DOTA2_matches_pool'][match_id]['players']:
@@ -151,7 +155,7 @@ class Dota2:
                     return {}
                 if j:
                     # 查询返回了数据，说明job仍未完成
-                    sv.logger.info('job_id {job_id} 仍在处理中')
+                    sv.logger.info(f'job_id {job_id} 仍在处理中')
                     return {}
                 else:
                     # job完成了，可以删掉
@@ -170,14 +174,14 @@ class Dota2:
                     sv.logger.error('OPENDOTA_REQUEST 网络延迟: {e}')
                     return {}
                 job_id = j['job']['jobId']
-                sv.logger.info('比赛编号{match_id} 请求OPENDOTA分析{attempts}，job_id: {job_id}')
+                sv.logger.info(f'比赛编号{match_id} 请求OPENDOTA分析{attempts}，job_id: {job_id}')
                 if match_id in steamdata['DOTA2_matches_pool']:
                     steamdata['DOTA2_matches_pool'][match_id]['job_id'] = job_id
                     dumpjson(steamdata, STEAM)
                 return {}
         else:
             # 比赛分析结果完整了
-            sv.logger.info('比赛编号{match_id} 从OPENDOTA获取到分析结果')
+            sv.logger.info(f'比赛编号{match_id} 从OPENDOTA获取到分析结果')
             # if match_id in steamdata['DOTA2_matches_pool']:
             #     for pp in steamdata['DOTA2_matches_pool'][match_id]['players']:
             #         for pm in match['players']:
@@ -628,7 +632,7 @@ class Dota2:
             fill=(128, 128, 128)
         )
         image.save(os.path.join(DOTA2_MATCHES, f'{match_id}.png'), 'png')
-        sv.logger.info('比赛编号{match_id} 生成战报图片')
+        sv.logger.info(f'比赛编号{match_id} 生成战报图片')
 
     def get_matches_report(self):
         steamdata = loadjson(STEAM)
@@ -728,11 +732,12 @@ async def init_images():
     total, downloaded, successful, failed = 0, 0, 0, 0
     images = []
     try:
-        images = requests.get('https://yubo65536.gitee.io/manager/assets/DOTA2_images.list', timeout=10).text.split('\n')
+        images = requests.get('https://yubo65536.gitee.io/manager/assets/DOTA2_images.list', headers=HEADER, timeout=10).text.split('\n')
+        print(images)
         total = len(images)
         sv.logger.info(f'加载图片列表成功，共有{total}条图片记录')
     except Exception as e:
-        sv.logger.error('加载图片列表失败: {e}')
+        sv.logger.error(f'加载图片列表失败: {e}')
         return
     if not images:
         return
@@ -750,7 +755,7 @@ async def init_images():
             continue
         try:
             with open(img_path, 'wb') as f:
-                f.write(requests.get(f'https://yubo65536.gitee.io/manager/assets/images/{img}', timeout=10).content)
+                f.write(requests.get(f'https://yubo65536.gitee.io/manager/assets/images/{img}', headers=HEADER, timeout=10).content)
                 downloaded += 1
         except Exception as e:
             failed += 1
