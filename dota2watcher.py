@@ -870,23 +870,23 @@ async def get_news_async():
                 else:
                     pass
     
-        for league_id in leaguedata.keys():
-            league = leaguedata[league_id]
-            try:
-                j = requests.get(OPENDOTA_LEAGUES_MATCHES.format(league_id), timeout=10).json()
-                for match in j:
-                    if match['match_id'] not in league['matches']:
-                        match_id = match['match_id']
-                        league['matches'].append(match_id)
-                        steamdata['DOTA2_matches_pool'][match_id] = {
-                            'request_attempts': 0,
-                            'start_time': start_time,
-                            'is_league': True,
-                            'groups': league['subscribers'],
-                            'league_name': league['league_alias'] if league['league_alias'] is not None else league['league_name']
-                        }
-            except requests.exceptions.RequestException as e:
-                sv.logger.error('OPENDOTA_LEAGUES_MATCHES 网络延迟: {e}')
+    for league_id in leaguedata.keys():
+        league = leaguedata[league_id]
+        try:
+            j = requests.get(OPENDOTA_LEAGUES_MATCHES.format(league_id), timeout=10).json()
+            for match in j:
+                if match['match_id'] not in league['matches']:
+                    match_id = match['match_id']
+                    league['matches'].append(match_id)
+                    steamdata['DOTA2_matches_pool'][match_id] = {
+                        'request_attempts': 0,
+                        'start_time': match['start_time'],
+                        'is_league': True,
+                        'groups': league['subscribers'],
+                        'league_name': league['league_alias'] if league['league_alias'] is not None else league['league_name']
+                    }
+        except requests.exceptions.RequestException as e:
+            sv.logger.error('OPENDOTA_LEAGUES_MATCHES 网络延迟: {e}')
 
     dumpjson(leaguedata, LEAGUE)
     dumpjson(steamdata, STEAM)
