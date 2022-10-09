@@ -870,23 +870,23 @@ async def get_news_async():
                 else:
                     pass
     
-    for league_id in leaguedata.keys():
-        league = leaguedata[league_id]
-        try:
-            j = requests.get(OPENDOTA_LEAGUES_MATCHES.format(league_id), timeout=10).json()
-            for match in j:
-                if match['match_id'] not in league['matches']:
-                    match_id = match['match_id']
-                    league['matches'].append(match_id)
-                    steamdata['DOTA2_matches_pool'][match_id] = {
-                        'request_attempts': 0,
-                        'start_time': start_time,
-                        'is_league': True,
-                        'groups': league['subscribers'],
-                        'league_name': league['league_alias'] if league['league_alias'] is not None else league['league_name']
-                    }
-        except requests.exceptions.RequestException as e:
-            sv.logger.error('OPENDOTA_LEAGUES_MATCHES 网络延迟: {e}')
+        for league_id in leaguedata.keys():
+            league = leaguedata[league_id]
+            try:
+                j = requests.get(OPENDOTA_LEAGUES_MATCHES.format(league_id), timeout=10).json()
+                for match in j:
+                    if match['match_id'] not in league['matches']:
+                        match_id = match['match_id']
+                        league['matches'].append(match_id)
+                        steamdata['DOTA2_matches_pool'][match_id] = {
+                            'request_attempts': 0,
+                            'start_time': start_time,
+                            'is_league': True,
+                            'groups': league['subscribers'],
+                            'league_name': league['league_alias'] if league['league_alias'] is not None else league['league_name']
+                        }
+            except requests.exceptions.RequestException as e:
+                sv.logger.error('OPENDOTA_LEAGUES_MATCHES 网络延迟: {e}')
 
     dumpjson(leaguedata, LEAGUE)
     dumpjson(steamdata, STEAM)
@@ -1209,7 +1209,7 @@ async def heroes_query(bot, ev: CQEvent):
                 break
         await bot.send(ev, f'{name}玩过{hero_num}个英雄，其中大于等于20局的有{hero_ge20}个')
 
-@sv.on_rex('查询战报(.*)', re.I)
+@sv.on_rex('查询战报(.*)')
 async def heroes_query(bot, ev: CQEvent):
     group_id = str(ev['group_id'])
     user_id = str(ev['user_id'])
@@ -1282,8 +1282,33 @@ async def lastmatch_query(bot, ev: CQEvent):
         await bot.send(ev, '，'.join(replys))
     else:
         await bot.send(ev, '查不到哟')
+        
+@sv.on_rex('取消联赛订阅(.*)')
+async def league_unregister(bot, ev: CQEvent):
+    group_id = str(ev['group_id'])
+    usage = '使用方法：\n取消联赛订阅 dota2联赛编号'
+    try:
+        match_msg = ev['match']
+        league_id = str(int(match_msg.group(1)))
+        leaguedata = loadjson(LEAGUE)
+        if leaguedata.get(league_id, 0) != 0:
+            league_name = leaguedata[league_id]['league_alias'] if leaguedata[league_id]['league_alias'] else leaguedata[league_id]['league_name']
+            if group_id in leaguedata[league_id]['subscribers']:
+                leaguedata[league_id]['subscribers'].remove(group_id)
+                if not leaguedata[league_id]['subscribers']:
+                    del leaguedata[league_id]
+                    sv.logger.info(f'已取消{league_name}订阅纪录')
+                dumpjson(leaguedata, LEAGUE)
+                await bot.send(ev, f'已取消{league_name}订阅')
+            else:
+                await bot.send(ev, f'{league_name}本群尚未订阅，无需取消')
+        else:
+            await bot.send(ev, f'联赛{league_id}尚未订阅，无需取消')
+    except Exception as e:
+        sv.logger.info(f'添加联赛订阅失败: {e}')
+        await bot.send(ev, usage)
 
-@sv.on_rex('联赛订阅(.*)', re.I)
+@sv.on_rex('联赛订阅(.*)')
 async def league_register(bot, ev: CQEvent):
     group_id = str(ev['group_id'])
     usage = '使用方法：\n联赛订阅 dota2联赛编号'
@@ -1327,31 +1352,6 @@ async def league_register(bot, ev: CQEvent):
         await bot.send(ev, f'已订阅{league_name}')
     except Exception as e:
         sv.logger.error(f'添加联赛订阅失败: {e}')
-        await bot.send(ev, usage)
-
-@sv.on_rex('取消联赛订阅(.*)', re.I)
-async def league_unregister(bot, ev: CQEvent):
-    group_id = str(ev['group_id'])
-    usage = '使用方法：\n取消联赛订阅 dota2联赛编号'
-    try:
-        match_msg = ev['match']
-        league_id = str(int(match_msg.group(1)))
-        leaguedata = loadjson(LEAGUE)
-        if leaguedata.get(league_id, 0) != 0:
-            league_name = leaguedata[league_id]['league_alias'] if leaguedata[league_id]['league_alias'] else leaguedata[league_id]['league_name']
-            if group_id in leaguedata[league_id]['subscribers']:
-                leaguedata[league_id]['subscribers'].remove(group_id)
-                if not leaguedata[league_id]['subscribers']:
-                    del leaguedata[league_id]
-                    sv.logger.info(f'已取消{league_name}订阅纪录')
-                dumpjson(leaguedata, LEAGUE)
-                await bot.send(ev, f'已取消{league_name}订阅')
-            else:
-                await bot.send(ev, f'{league_name}本群尚未订阅，无需取消')
-        else:
-            await bot.send(ev, f'联赛{league_id}尚未订阅，无需取消')
-    except Exception as e:
-        sv.logger.info(f'添加联赛订阅失败: {e}')
         await bot.send(ev, usage)
 
 @sv.scheduled_job('cron', minute='*/1')
