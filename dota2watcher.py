@@ -120,12 +120,12 @@ class Dota2:
                 # 活动模式
                 sv.logger.info('比赛编号{match_id} 活动模式，跳过分析')
                 match['incomplete'] = True
-                if match_id in steamdata['DOTA2_matches_pool']:
-                    for pp in steamdata['DOTA2_matches_pool'][match_id]['players']:
-                        for pm in match['players']:
-                            if pp['steam_id3'] == pm['account_id']:
-                                pm['personaname'] = pp['personaname']
-                                break
+                # if match_id in steamdata['DOTA2_matches_pool']:
+                #     for pp in steamdata['DOTA2_matches_pool'][match_id]['players']:
+                #         for pm in match['players']:
+                #             if pp['steam_id3'] == pm['account_id']:
+                #                 pm['personaname'] = pp['personaname']
+                #                 break
                 dumpjson(match, MATCH)
                 return match
             received = match['players'][0]['damage_inflictor_received']
@@ -178,12 +178,12 @@ class Dota2:
         else:
             # 比赛分析结果完整了
             sv.logger.info('比赛编号{match_id} 从OPENDOTA获取到分析结果')
-            if match_id in steamdata['DOTA2_matches_pool']:
-                for pp in steamdata['DOTA2_matches_pool'][match_id]['players']:
-                    for pm in match['players']:
-                        if pp['steam_id3'] == pm['account_id']:
-                            pm['personaname'] = pp['personaname']
-                            break
+            # if match_id in steamdata['DOTA2_matches_pool']:
+            #     for pp in steamdata['DOTA2_matches_pool'][match_id]['players']:
+            #         for pm in match['players']:
+            #             if pp['steam_id3'] == pm['account_id']:
+            #                 pm['personaname'] = pp['personaname']
+            #                 break
             dumpjson(match, MATCH)
             return match
 
